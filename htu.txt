@@ -1,0 +1,10 @@
+!python mein.py --model_id "имя-модели" --dest "папка-назначения"
+
+пример фуллом
+# Установка
+!git clone https://github.com/ваш-пользователь/ваш-репозиторий.git
+%cd ваш-репозиторий
+!pip install -r requirements.txt
+
+# Скачивание модели
+!python mein.py --model_id "google/gemma-3-12b-it" --dest "models"
