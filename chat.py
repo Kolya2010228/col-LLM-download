@@ -22,6 +22,15 @@ def get_token(cli_token: Optional[str]) -> Optional[str]:
     return os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_TOKEN")
 
 
+def bnb_and_cuda_available() -> bool:
+    """Return True if bitsandbytes is importable and CUDA is available."""
+    try:
+        import bitsandbytes  # type: ignore
+        return torch.cuda.is_available()
+    except Exception:
+        return False
+
+
 def load_model(model_id_or_path: str,
                load_in_4bit: bool,
                dtype: str,
@@ -34,6 +43,9 @@ def load_model(model_id_or_path: str,
     }.get(dtype, torch.float16)
 
     tokenizer = AutoTokenizer.from_pretrained(model_id_or_path, use_fast=True, token=token)
+    # Ensure pad token exists to prevent generation errors
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
 
     model_kwargs = {
         "device_map": "auto",
@@ -41,11 +53,16 @@ def load_model(model_id_or_path: str,
     }
 
     if load_in_4bit:
+        if not bnb_and_cuda_available():
+            print("[Info] 4-bit отключен: bitsandbytes/CUDA недоступны на этой системе.")
+            load_in_4bit = False
+
         # 4-bit quantization via bitsandbytes (recommended for 12B on Colab)
-        model_kwargs.update({
-            "load_in_4bit": True,
-            "torch_dtype": torch.float16,
-        })
+        if load_in_4bit:
+            model_kwargs.update({
+                "load_in_4bit": True,
+                "torch_dtype": torch.float16,
+            })
     else:
         if torch_dtype is not None:
             model_kwargs["torch_dtype"] = torch_dtype
@@ -106,7 +123,7 @@ def chat_loop(model: AutoModelForCausalLM,
                 temperature=temperature,
                 top_p=top_p,
                 repetition_penalty=1.1,
-                pad_token_id=tokenizer.eos_token_id,
+                pad_token_id=tokenizer.pad_token_id,
             )
 
         text = tokenizer.decode(gen_ids[0], skip_special_tokens=True)

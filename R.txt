@@ -2,3 +2,7 @@ huggingface_hub>=0.16.0
 transformers>=4.30.0
 accelerate>=0.20.0
 safetensors>=0.3.0
+torch>=2.1.0
+
+# Опционально для 4-битной загрузки (требует CUDA и совместимую сборку):
+# bitsandbytes>=0.41.0

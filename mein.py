@@ -3,6 +3,7 @@ import os
 import sys
 import argparse
 from pathlib import Path
+import subprocess
 
 # Check if running in Google Colab
 IN_COLAB = "google.colab" in sys.modules
@@ -13,7 +14,13 @@ def install_dependencies():
         return
         
     print("Installing required packages in Colab...")
-    !pip install -q huggingface_hub transformers accelerate
+    # Use subprocess instead of notebook magics to be valid in .py scripts
+    pkgs = [
+        "huggingface_hub",
+        "transformers",
+        "accelerate",
+    ]
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", *pkgs])
 
 def download_model(model_id, dest_dir, revision=None, token=None, from_hf_cache=False):
     """Download model using huggingface_hub"""
@@ -28,7 +35,9 @@ def download_model(model_id, dest_dir, revision=None, token=None, from_hf_cache=
         "local_dir": dest_dir,
         "local_dir_use_symlinks": False,
         "resume_download": True,
-        "ignore_patterns": ["*.bin", "*.h5", "*.ot", "*.msgpack"],
+        # Do NOT ignore weight files by default; users often want full model
+        # Comment the next line back in if you only need configs/tokenizers
+        # "ignore_patterns": ["*.bin", "*.h5", "*.ot", "*.msgpack"],
     }
     
     if revision:

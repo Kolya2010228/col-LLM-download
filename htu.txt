@@ -1,10 +1,135 @@
-!python mein.py --model_id "имя-модели" --dest "папка-назначения"
+# Инструкция по установке и использованию (Windows и Google Colab)
 
-пример фуллом
-# Установка
-!git clone https://github.com/ваш-пользователь/ваш-репозиторий.git
-%cd ваш-репозиторий
-!pip install -r requirements.txt
+Ниже описаны шаги для:
+- установки зависимостей,
+- скачивания модели из Hugging Face Hub с помощью `mein.py`,
+- запуска чата с моделью через `chat.py`.
 
-# Скачивание модели
+---
+
+## 1) Вариант A — Windows (локальный запуск)
+
+### 1.1. Установка Python и виртуального окружения
+- Установите Python 3.10–3.12 с сайта python.org (при установке поставьте галочку "Add Python to PATH").
+- В папке проекта создайте и активируйте виртуальное окружение:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\activate
+```
+
+### 1.2. Установка зависимостей
+- Установите зависимости из файла `R.txt`:
+
+```powershell
+pip install -r R.txt
+```
+
+Примечания:
+- Библиотека PyTorch не указана жёстко под конкретный CUDA. Установите подходящую версию по инструкции https://pytorch.org/ (для CPU подойдёт обычная команда `pip install torch`).
+- Для 4-битной загрузки требуется `bitsandbytes` и CUDA. На большинстве Windows/CPU систем 4-бит будет автоматически отключён.
+
+### 1.3. Авторизация в Hugging Face (для приватных/гейтед моделей, например Gemma)
+- Получите токен в профиле: https://huggingface.co/settings/tokens
+- Сохраните в переменную окружения `HF_TOKEN` (в текущей сессии PowerShell):
+
+```powershell
+$env:HF_TOKEN = "ВАШ_ТОКЕН"
+```
+
+### 1.4. Скачивание модели
+- Скачайте модель полностью в папку `models/` (пример для Gemma 3 12B IT):
+
+```powershell
+python mein.py --model_id "google/gemma-3-12b-it" --dest "models"
+```
+
+Дополнительно:
+- Указать ревизию/ветку: `--revision main`
+- Брать только из локального кэша HF: `--from_hf_cache`
+- Передача токена напрямую: `--token %HF_TOKEN%` (на Windows через `$env:HF_TOKEN` уже не нужно).
+
+### 1.5. Запуск чата
+- Запустите интерактивный режим:
+
+```powershell
+python chat.py --model "google/gemma-3-12b-it" --max_new_tokens 256 --temperature 0.7 --top_p 0.9
+```
+
+Пояснения:
+- Если модель скачана в `models/google__gemma-3-12b-it`, можно передать локальный путь: `--model ".\models\google__gemma-3-12b-it"` (папка, созданная huggingface_hub).
+- Для экономии ВРАМ включите 4-бит (только при наличии CUDA/`bitsandbytes`): по умолчанию включается, отключить можно флагом `--no_4bit`.
+- Системный промпт можно изменить: `--system_prompt "Кратко и по делу."`
+
+---
+
+## 2) Вариант B — Google Colab
+
+### 2.1. Подготовка окружения
+В первой ячейке установите PyTorch (по умолчанию в Colab обычно есть) и создайте переменную токена, если нужна авторизация:
+
+```python
+import os
+os.environ["HF_TOKEN"] = "ВАШ_ТОКЕН"  # при необходимости
+```
+
+### 2.2. Клонирование проекта (если код в репозитории)
+```bash
+!git clone https://github.com/USER/REPO.git
+%cd REPO
+```
+
+### 2.3. Скачивание модели
+В Colab `mein.py` сам установит нужные пакеты через `pip` при первом запуске:
+
+```bash
 !python mein.py --model_id "google/gemma-3-12b-it" --dest "models"
+```
+
+### 2.4. Запуск чата
+```bash
+!python chat.py --model "google/gemma-3-12b-it" --max_new_tokens 256 --temperature 0.7 --top_p 0.9
+```
+
+---
+
+## 3) Частые вопросы и ошибки
+
+- Приватные/гейтед модели (например, Gemma):
+  - Требуется принять лицензию на странице модели и использовать `HF_TOKEN`.
+
+- Ошибка по `bitsandbytes`/4-bit:
+  - На Windows/CPU `bitsandbytes` часто недоступен — скрипт сам отключит 4-бит и загрузит полноточную/полулегковесную версию. Можно явно отключить флагом `--no_4bit`.
+
+- Недостаточно VRAM/ОЗУ:
+  - Попробуйте меньшую модель или 4-бит (при наличии CUDA), уменьшите `--max_new_tokens`.
+
+- Пустые ответы или странный формат:
+  - Убедитесь, что модель — чат-инкаструкт (например, `-it` у Gemma). Попробуйте задать `--system_prompt`.
+
+---
+
+## 4) Примеры команд (кратко)
+
+- Скачивание модели в Windows:
+```powershell
+python mein.py --model_id "google/gemma-3-12b-it" --dest "models"
+```
+
+- Запуск чата с локальным путём к модели:
+```powershell
+python chat.py --model ".\models\google__gemma-3-12b-it" --max_new_tokens 256 --temperature 0.7 --top_p 0.9
+```
+
+- Colab — скачивание и чат:
+```bash
+!python mein.py --model_id "google/gemma-3-12b-it" --dest "models"
+!python chat.py --model "google/gemma-3-12b-it"
+```
+
+---
+
+## 5) Структура файлов
+- `mein.py` — скачивание модели из Hugging Face (поддержка токена/ревизии/кэша).
+- `chat.py` — интерактивный чат, авто-отключение 4-bit при отсутствии CUDA/`bitsandbytes`.
+- `R.txt` — зависимости проекта для `pip install -r R.txt`.
